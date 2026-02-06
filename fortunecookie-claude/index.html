@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fortune Cookie</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #FFF9F0;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-family: 'Crimson Text', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: #C4956A;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+      opacity: 0.8;
+    }
+
+    /* Cookie SVG container */
+    .cookie-wrapper {
+      position: relative;
+      width: 220px;
+      height: 160px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .cookie-wrapper:hover {
+      transform: scale(1.05);
+    }
+
+    .cookie-wrapper:active {
+      transform: scale(0.97);
+    }
+
+    .cookie-wrapper.cracked {
+      cursor: default;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .cookie-wrapper.cracked:hover {
+      transform: none;
+    }
+
+    /* Cookie halves */
+    .cookie-half {
+      position: absolute;
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+    }
+
+    .cookie-left {
+      left: 0;
+      top: 0;
+      transform-origin: center right;
+    }
+
+    .cookie-right {
+      right: 0;
+      top: 0;
+      transform-origin: center left;
+    }
+
+    .cookie-wrapper.cracked .cookie-left {
+      transform: translateX(-60px) rotate(-15deg);
+      opacity: 0.7;
+    }
+
+    .cookie-wrapper.cracked .cookie-right {
+      transform: translateX(60px) rotate(15deg);
+      opacity: 0.7;
+    }
+
+    /* Whole cookie (shown before crack) */
+    .cookie-whole {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transition: opacity 0.15s ease;
+    }
+
+    .cookie-wrapper.cracked .cookie-whole {
+      opacity: 0;
+    }
+
+    /* Crumbs */
+    .crumb {
+      position: absolute;
+      width: 8px;
+      height: 6px;
+      background: #D4A574;
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .cookie-wrapper.cracked .crumb {
+      animation: crumbFall 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+
+    @keyframes crumbFall {
+      0% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--crumb-x), var(--crumb-y)) scale(0.3); }
+    }
+
+    .crumb:nth-child(1) { left: 130px; top: 100px; --crumb-x: -30px; --crumb-y: 80px; animation-delay: 0.1s; }
+    .crumb:nth-child(2) { left: 145px; top: 95px; --crumb-x: 15px; --crumb-y: 90px; animation-delay: 0.15s; }
+    .crumb:nth-child(3) { left: 138px; top: 105px; --crumb-x: -10px; --crumb-y: 70px; animation-delay: 0.05s; }
+    .crumb:nth-child(4) { left: 142px; top: 98px; --crumb-x: 25px; --crumb-y: 85px; animation-delay: 0.2s; }
+    .crumb:nth-child(5) { left: 135px; top: 102px; --crumb-x: -20px; --crumb-y: 75px; animation-delay: 0.12s; }
+    .crumb:nth-child(6) { left: 148px; top: 100px; --crumb-x: 35px; --crumb-y: 65px; animation-delay: 0.18s; }
+
+    /* Fortune slip */
+    .fortune-slip {
+      width: 320px;
+      background: #FFFEF5;
+      border: 1px solid #E8DCC8;
+      border-radius: 4px;
+      padding: 2rem 1.8rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+      opacity: 0;
+      transform: scale(0.8) translateY(-20px);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s, opacity 0.4s ease 0.3s;
+      z-index: 10;
+      margin-top: 1rem;
+      max-height: 0;
+      overflow: hidden;
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s,
+                  opacity 0.4s ease 0.3s,
+                  max-height 0.5s ease 0.2s;
+    }
+
+    .fortune-slip.visible {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+      max-height: 500px;
+    }
+
+    .fortune-text {
+      font-family: 'Crimson Text', serif;
+      font-size: 1.15rem;
+      line-height: 1.6;
+      color: #4A3728;
+      font-style: italic;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      min-height: 3.5em;
+    }
+
+    .fortune-divider {
+      width: 40px;
+      height: 1px;
+      background: #D4C5A9;
+      margin: 0 auto 1rem;
+    }
+
+    .fortune-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #8B7D6B;
+      text-align: center;
+    }
+
+    .lucky-numbers {
+      letter-spacing: 0.1em;
+    }
+
+    .learn-chinese {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.15rem;
+    }
+
+    .chinese-char {
+      font-size: 1.4rem;
+      color: #C4956A;
+      font-style: normal;
+    }
+
+    .chinese-pinyin {
+      font-size: 0.65rem;
+      color: #A89880;
+      text-transform: lowercase;
+    }
+
+    .news-link {
+      display: block;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #EDE6D8;
+      font-size: 0.65rem;
+      color: #C4B89E;
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      transition: color 0.2s ease;
+    }
+
+    .news-link:hover {
+      color: #C4956A;
+    }
+
+    .news-link .news-label {
+      text-transform: uppercase;
+      font-size: 0.55rem;
+      letter-spacing: 0.08em;
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #D4C5A9;
+    }
+
+    /* New cookie button */
+    .new-cookie-btn {
+      margin-top: 2.5rem;
+      background: none;
+      border: 1px solid #D4C5A9;
+      color: #8B7D6B;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      padding: 0.6rem 1.5rem;
+      border-radius: 100px;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.4s ease 0.6s;
+      letter-spacing: 0.05em;
+    }
+
+    .new-cookie-btn.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .new-cookie-btn:hover {
+      background: #C4956A;
+      border-color: #C4956A;
+      color: #FFF;
+    }
+
+    /* Tap hint */
+    .tap-hint {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: #C4B89E;
+      letter-spacing: 0.05em;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .tap-hint.hidden {
+      opacity: 0 !important;
+      animation: none;
+      transition: opacity 0.3s ease;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    /* Shake animation */
+    @keyframes cookieShake {
+      0%, 100% { transform: rotate(0deg); }
+      15% { transform: rotate(-3deg); }
+      30% { transform: rotate(3deg); }
+      45% { transform: rotate(-2deg); }
+      60% { transform: rotate(2deg); }
+      75% { transform: rotate(-1deg); }
+      90% { transform: rotate(1deg); }
+    }
+
+    .cookie-wrapper.shaking {
+      animation: cookieShake 0.5s ease;
+    }
+
+    /* Screen shake */
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0); }
+      10% { transform: translate(-2px, 1px); }
+      20% { transform: translate(2px, -1px); }
+      30% { transform: translate(-1px, 2px); }
+      40% { transform: translate(1px, -2px); }
+      50% { transform: translate(-2px, 0px); }
+      60% { transform: translate(2px, 1px); }
+      70% { transform: translate(0px, -1px); }
+      80% { transform: translate(-1px, 1px); }
+      90% { transform: translate(1px, 0px); }
+    }
+
+    .container.shaking {
+      animation: screenShake 0.4s ease;
+    }
+
+    /* Reset transition for new cookie */
+    .cookie-wrapper.resetting .cookie-left,
+    .cookie-wrapper.resetting .cookie-right,
+    .cookie-wrapper.resetting .cookie-whole {
+      transition: none;
+    }
+
+    .fortune-slip.resetting {
+      transition: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="container">
+    <h1>Fortune Cookie</h1>
+
+    <div class="cookie-wrapper" id="cookie" onclick="crackCookie()">
+      <!-- Whole cookie -->
+      <svg class="cookie-whole" viewBox="0 0 280 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Shadow -->
+        <ellipse cx="140" cy="185" rx="90" ry="10" fill="#E8DCC8" opacity="0.5"/>
+        <!-- Cookie body -->
+        <path d="M40 110 C40 60, 90 30, 140 30 C190 30, 240 60, 240 110 C240 140, 210 160, 190 160 L180 130 C175 120, 165 115, 155 118 L140 125 L125 118 C115 115, 105 120, 100 130 L90 160 C70 160, 40 140, 40 110Z" fill="#D4A574"/>
+        <!-- Lighter top highlight -->
+        <path d="M60 100 C60 65, 100 40, 140 40 C180 40, 220 65, 220 100 C220 110, 210 120, 200 125 L190 105 C185 95, 175 90, 165 93 L140 100 L115 93 C105 90, 95 95, 90 105 L80 125 C70 120, 60 110, 60 100Z" fill="#DEBC96"/>
+        <!-- Top edge highlight -->
+        <path d="M70 90 C75 60, 110 42, 140 42 C170 42, 205 60, 210 90" stroke="#E8CDA8" stroke-width="2" fill="none" opacity="0.6"/>
+        <!-- Center fold line -->
+        <path d="M100 130 L125 118 C130 116, 135 115, 140 117 L140 125 L140 117 C145 115, 150 116, 155 118 L180 130" stroke="#C4956A" stroke-width="1.5" fill="none" opacity="0.6"/>
+        <!-- Texture dots -->
+        <circle cx="100" cy="75" r="2" fill="#C4956A" opacity="0.3"/>
+        <circle cx="160" cy="65" r="1.5" fill="#C4956A" opacity="0.25"/>
+        <circle cx="130" cy="55" r="1.5" fill="#C4956A" opacity="0.2"/>
+        <circle cx="180" cy="85" r="2" fill="#C4956A" opacity="0.25"/>
+        <circle cx="75" cy="95" r="1.5" fill="#C4956A" opacity="0.2"/>
+        <circle cx="200" cy="100" r="1.5" fill="#C4956A" opacity="0.2"/>
+      </svg>
+
+      <!-- Left half -->
+      <svg class="cookie-half cookie-left" viewBox="0 0 145 200" width="145" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="72" cy="185" rx="50" ry="8" fill="#E8DCC8" opacity="0.4"/>
+        <path d="M40 110 C40 60, 90 30, 140 30 L140 125 L125 118 C115 115, 105 120, 100 130 L90 160 C70 160, 40 140, 40 110Z" fill="#D4A574"/>
+        <path d="M60 100 C60 65, 100 40, 140 40 L140 100 L115 93 C105 90, 95 95, 90 105 L80 125 C70 120, 60 110, 60 100Z" fill="#DEBC96"/>
+        <!-- Rough break edge -->
+        <path d="M140 30 L138 50 L141 70 L139 90 L140 100 L138 110 L140 125" stroke="#C4956A" stroke-width="1" fill="none" opacity="0.4"/>
+      </svg>
+
+      <!-- Right half -->
+      <svg class="cookie-half cookie-right" viewBox="135 0 145 200" width="145" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="208" cy="185" rx="50" ry="8" fill="#E8DCC8" opacity="0.4"/>
+        <path d="M140 30 C190 30, 240 60, 240 110 C240 140, 210 160, 190 160 L180 130 C175 120, 165 115, 155 118 L140 125 L140 30Z" fill="#D4A574"/>
+        <path d="M140 40 C180 40, 220 65, 220 100 C220 110, 210 120, 200 125 L190 105 C185 95, 175 90, 165 93 L140 100 L140 40Z" fill="#DEBC96"/>
+        <!-- Rough break edge -->
+        <path d="M140 30 L142 50 L139 70 L141 90 L140 100 L142 110 L140 125" stroke="#C4956A" stroke-width="1" fill="none" opacity="0.4"/>
+      </svg>
+
+      <!-- Crumbs -->
+      <div class="crumb"></div>
+      <div class="crumb"></div>
+      <div class="crumb"></div>
+      <div class="crumb"></div>
+      <div class="crumb"></div>
+      <div class="crumb"></div>
+    </div>
+
+    <div class="fortune-slip" id="fortune">
+      <div class="fortune-text" id="fortuneText"></div>
+      <div class="fortune-divider"></div>
+      <div class="fortune-details">
+        <div class="lucky-numbers" id="luckyNumbers"></div>
+        <div class="learn-chinese">
+          <span class="chinese-char" id="chineseChar"></span>
+          <span class="chinese-pinyin" id="chinesePinyin"></span>
+          <span id="chineseEnglish"></span>
+        </div>
+      </div>
+      <a class="news-link" id="newsLink" href="#" target="_blank" rel="noopener">
+        <span class="news-label">Inspired by</span>
+        <span id="newsHeadline"></span>
+      </a>
+    </div>
+
+    <button class="new-cookie-btn" id="newCookieBtn" onclick="newCookie()">New Cookie</button>
+
+    <div class="tap-hint" id="tapHint">tap the cookie</div>
+  </div>
+
+  <script>
+    const fortunes = [
+      { text: "A great wall cannot keep out the one who fills out the right paperwork.", news: "Federal judge blocks warrantless ICE arrests in Oregon", url: "https://www.npr.org/2026/02/05/g-s1-108778/ice-agents-warrantless-arrests-oregon" },
+      { text: "The wise dog knows that best in show is a state of mind, not a ribbon.", news: "Penny the Doberman wins Westminster Best in Show", url: "https://www.nbcnews.com/pop-culture/pop-culture-news/westminster-dog-show-2026-best-in-show-winner-rcna256410" },
+      { text: "Three million pages of truth weigh less than one page of peace.", news: "DOJ releases 3 million+ pages of Epstein files", url: "https://www.npr.org/2026/01/31/nx-s1-5694664/doj-releases-final-3-million-pages-of-the-epstein-files" },
+      { text: "He who wins five golden statues still must carry them home himself.", news: "Kendrick Lamar wins 5 Grammys, surpasses Jay-Z", url: "https://www.grammy.com/live-blog/" },
+      { text: "The treaty expires, but the fortune cookie is forever.", news: "New START nuclear treaty between U.S. and Russia expires", url: "https://www.npr.org/2026/02/04/nx-s1-5697382/new-start-nuclear-treaty-expired-us-russia" },
+      { text: "A song in a language you do not speak may still win the biggest prize.", news: "Bad Bunny\u2019s album is first Spanish-language Album of the Year", url: "https://www.npr.org/2026/02/02/nx-s1-5693043/grammys-2026-bad-bunny-album-of-the-year" },
+      { text: "The one who throws the first stone should not live in a house made of classified documents.", news: "DOJ releases 3 million+ pages of Epstein files", url: "https://www.npr.org/2026/01/31/nx-s1-5694664/doj-releases-final-3-million-pages-of-the-epstein-files" },
+      { text: "When the referee is not watching, even the champion must watch himself.", news: "Alcaraz defeats Djokovic for first Australian Open title", url: "https://www.atptour.com/en/news/alcaraz-djokovic-australian-open-2026-final" },
+      { text: "A billion euros cannot stop the rain, but it can rebuild what the rain destroys.", news: "Portugal launches \u20AC2.5B aid after Storm Kristin", url: "https://www.theportugalnews.com/news/2026-02-02/25-billion-allocation-for-communities-after-storm-kristin/953346" },
+      { text: "The youngest to hold all four keys still cannot open every door.", news: "Alcaraz becomes youngest to complete career Grand Slam", url: "https://www.atptour.com/en/news/alcaraz-australian-open-2026-career-grand-slam" },
+      { text: "Beware the drone that flies at dawn \u2014 pack a lunch for the minibus instead.", news: "Russian drone strike kills 15 mineworkers in Dnipro, Ukraine", url: "https://www.cnn.com/2026/02/01/europe/ukraine-russia-strike-dnipropetrovsk-bus-intl" },
+      { text: "Three hundred protests bloom like flowers; the gardener is always the last to know.", news: "Over 300 anti-ICE protests held across the U.S.", url: "https://www.npr.org/2026/01/31/nx-s1-5695221/anti-ice-protesters-call-for-national-action-against-federal-immigration-tactics" },
+      { text: "Your lucky border crossing will reopen, but only on alternate Tuesdays.", news: "Rafah border crossing between Gaza and Egypt reopens", url: "https://abcnews.go.com/International/gaza-egypt-border-crossing-rafah-partially-reopens-after/story?id=129777294" },
+      { text: "The sportswear giant discriminates against no one whose credit card works.", news: "Federal agency investigates Nike for alleged discrimination", url: "https://www.npr.org/2026/02/05/g-s1-108780/nike-federal-probe-discrimination-white-workers" },
+      { text: "A penny saved is a Penny who wins at Westminster.", news: "Penny the Doberman wins Westminster Best in Show", url: "https://www.nbcnews.com/pop-culture/pop-culture-news/westminster-dog-show-2026-best-in-show-winner-rcna256410" },
+      { text: "Do not trust the algorithm \u2014 it has never eaten a real cookie.", news: "Kendrick Lamar wins 5 Grammys, surpasses Jay-Z", url: "https://www.grammy.com/live-blog/" },
+      { text: "He who moves from one lodge to another still carries the same luggage.", news: "Prince Andrew leaves Royal Lodge amid Epstein fallout", url: "https://abcnews.go.com/International/wireStory/former-prince-andrew-moves-king-charles-private-estate-129841678" },
+      { text: "When forty-eight percent of the people choose you, remember the other fifty-two.", news: "Laura Fern\u00e1ndez wins Costa Rica presidency with 48%", url: "https://www.npr.org/2026/02/02/g-s1-108418/costa-rica-election-laura-fernandez-wins" },
+      { text: "The wise investor diversifies, but the truly wise investor buys more cookies.", news: "New START nuclear treaty expires \u2014 check your portfolio", url: "https://www.npr.org/2026/02/04/nx-s1-5697382/new-start-nuclear-treaty-expired-us-russia" },
+      { text: "Even the nuclear treaty has an expiration date. Check your milk.", news: "New START nuclear treaty between U.S. and Russia expires", url: "https://www.npr.org/2026/02/04/nx-s1-5697382/new-start-nuclear-treaty-expired-us-russia" },
+      { text: "The flood comes for the insured and uninsured alike, but only one gets a billion-euro loan.", news: "Portugal extends calamity state amid historic flooding", url: "https://www.euronews.com/green/2026/02/03/portugal-braces-for-second-major-storm-as-authorities-urge-residents-to-prepare-emergency-" },
+      { text: "A career grand slam sounds impressive until you realize the racket is still in your hand.", news: "Alcaraz completes career Grand Slam at 22", url: "https://www.atptour.com/en/news/alcaraz-australian-open-2026-career-grand-slam" },
+      { text: "Your streaming algorithm knows you better than your mother, but your mother makes better soup.", news: "Bad Bunny makes Grammy history with Spanish-language win", url: "https://www.npr.org/2026/02/02/nx-s1-5693043/grammys-2026-bad-bunny-album-of-the-year" },
+      { text: "The person who reads three million pages has no time left for fortune cookies.", news: "DOJ releases 3 million+ pages of Epstein files", url: "https://www.npr.org/2026/01/31/nx-s1-5694664/doj-releases-final-3-million-pages-of-the-epstein-files" },
+      { text: "One small step for immigration enforcement, one giant headache for everyone.", news: "Surge of 3,000 federal immigration agents deployed to Minnesota", url: "https://www.cnn.com/2026/01/31/us/minnesota-protest-national-boycott" },
+      { text: "The Doberman wins best in show; your cat remains unimpressed.", news: "Penny the Doberman wins Westminster Best in Show", url: "https://www.nbcnews.com/pop-culture/pop-culture-news/westminster-dog-show-2026-best-in-show-winner-rcna256410" },
+      { text: "Seek wisdom in unexpected places \u2014 behind the couch, inside the cookie, between the headlines.", news: "Steven Spielberg achieves EGOT status with Grammy win", url: "https://variety.com/2026/music/awards/steven-spielberg-egot-grammys-win-1236648688/" },
+      { text: "When all doors close, check if you are pushing instead of pulling. Then check your visa.", news: "Federal judge blocks warrantless ICE arrests in Oregon", url: "https://www.npr.org/2026/02/05/g-s1-108778/ice-agents-warrantless-arrests-oregon" },
+      { text: "A storm in sixty municipalities is just weather. A storm in your inbox is Tuesday.", news: "Portugal extends calamity in 69 municipalities after Storm Kristin", url: "https://www.euronews.com/green/2026/02/03/portugal-braces-for-second-major-storm-as-authorities-urge-residents-to-prepare-emergency-" },
+      { text: "The golden record spins for all, but the royalty check spins for few.", news: "Steven Spielberg completes EGOT with Grammy win", url: "https://variety.com/2026/music/awards/steven-spielberg-egot-grammys-win-1236648688/" },
+    ];
+
+    const chineseWords = [
+      { char: "运", pinyin: "yùn", english: "Luck" },
+      { char: "饼", pinyin: "bǐng", english: "Cookie" },
+      { char: "命", pinyin: "mìng", english: "Destiny" },
+      { char: "和", pinyin: "hé", english: "Harmony" },
+      { char: "笑", pinyin: "xiào", english: "Laugh" },
+      { char: "梦", pinyin: "mèng", english: "Dream" },
+      { char: "真", pinyin: "zhēn", english: "Truth" },
+      { char: "勇", pinyin: "yǒng", english: "Courage" },
+      { char: "福", pinyin: "fú", english: "Fortune" },
+      { char: "心", pinyin: "xīn", english: "Heart" },
+      { char: "道", pinyin: "dào", english: "The Way" },
+      { char: "风", pinyin: "fēng", english: "Wind" },
+      { char: "光", pinyin: "guāng", english: "Light" },
+      { char: "友", pinyin: "yǒu", english: "Friend" },
+      { char: "智", pinyin: "zhì", english: "Wisdom" },
+    ];
+
+    let isCracked = false;
+    let usedFortunes = [];
+
+    function getRandomFortune() {
+      if (usedFortunes.length >= fortunes.length) {
+        usedFortunes = [];
+      }
+      let available = fortunes.filter((_, i) => !usedFortunes.includes(i));
+      let idx = Math.floor(Math.random() * available.length);
+      let realIdx = fortunes.indexOf(available[idx]);
+      usedFortunes.push(realIdx);
+      return available[idx];
+    }
+
+    function getLuckyNumbers() {
+      let nums = new Set();
+      while (nums.size < 6) {
+        nums.add(Math.floor(Math.random() * 49) + 1);
+      }
+      return "Lucky Numbers: " + Array.from(nums).sort((a, b) => a - b).join(" - ");
+    }
+
+    function getChineseWord() {
+      return chineseWords[Math.floor(Math.random() * chineseWords.length)];
+    }
+
+    function crackCookie() {
+      if (isCracked) return;
+      isCracked = true;
+
+      const cookie = document.getElementById("cookie");
+      const fortune = document.getElementById("fortune");
+      const hint = document.getElementById("tapHint");
+      const btn = document.getElementById("newCookieBtn");
+      const container = document.getElementById("container");
+
+      // Shake first
+      cookie.classList.add("shaking");
+
+      setTimeout(() => {
+        cookie.classList.remove("shaking");
+        cookie.classList.add("cracked");
+        container.classList.add("shaking");
+
+        // Set fortune content
+        const f = getRandomFortune();
+        document.getElementById("fortuneText").textContent = f.text;
+        document.getElementById("newsHeadline").textContent = f.news;
+        document.getElementById("newsLink").href = f.url;
+        document.getElementById("luckyNumbers").textContent = getLuckyNumbers();
+        const word = getChineseWord();
+        document.getElementById("chineseChar").textContent = word.char;
+        document.getElementById("chinesePinyin").textContent = word.pinyin;
+        document.getElementById("chineseEnglish").textContent = word.english;
+
+        fortune.classList.add("visible");
+        hint.classList.add("hidden");
+        btn.classList.add("visible");
+
+        setTimeout(() => container.classList.remove("shaking"), 400);
+
+        // Scroll fortune into view after animation
+        setTimeout(() => {
+          fortune.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 600);
+      }, 500);
+    }
+
+    function newCookie() {
+      const cookie = document.getElementById("cookie");
+      const fortune = document.getElementById("fortune");
+      const btn = document.getElementById("newCookieBtn");
+      const hint = document.getElementById("tapHint");
+
+      // Instant reset with no transition
+      cookie.classList.add("resetting");
+      fortune.classList.add("resetting");
+
+      cookie.classList.remove("cracked", "shaking");
+      fortune.classList.remove("visible");
+      btn.classList.remove("visible");
+      hint.classList.remove("hidden");
+
+      // Force reflow then re-enable transitions
+      void cookie.offsetWidth;
+
+      requestAnimationFrame(() => {
+        cookie.classList.remove("resetting");
+        fortune.classList.remove("resetting");
+        isCracked = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+  </script>
+</body>
+</html>

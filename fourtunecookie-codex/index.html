@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fortune Cookie</title>
+  <style>
+    :root {
+      --bg: #f7f2e8;
+      --paper: #fff7e3;
+      --ink: #2f2a21;
+      --muted: #6c6254;
+      --cookie: #d9a86c;
+      --cookie-deep: #c88f52;
+      --chip: #9b6a3b;
+      --accent: #e6c37a;
+      --shadow: rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Alegreya Sans", "Alegreya", "Georgia", serif;
+      color: var(--ink);
+      background: radial-gradient(1200px 700px at 20% -10%, #fff9ef, var(--bg));
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+
+    .app {
+      width: min(920px, 92vw);
+      display: grid;
+      gap: 28px;
+      align-items: center;
+      justify-items: center;
+      padding: 40px 0 50px;
+    }
+
+    h1 {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+    }
+
+    .hint {
+      color: var(--muted);
+      margin: 0;
+      font-size: 0.98rem;
+    }
+
+    .cookie-stage {
+      display: grid;
+      place-items: center;
+      gap: 20px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .cookie {
+      --cookie-size: clamp(240px, 34vw, 340px);
+      width: var(--cookie-size);
+      height: calc(var(--cookie-size) * 0.75);
+      position: relative;
+      cursor: pointer;
+      filter: drop-shadow(0 18px 18px var(--shadow));
+      transition: transform 0.2s ease;
+      z-index: 2;
+      pointer-events: auto;
+      touch-action: manipulation;
+    }
+
+    .cookie:hover { transform: translateY(-4px); }
+
+    .half {
+      position: absolute;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      overflow: hidden;
+      transition: transform 0.45s ease;
+    }
+
+    .half.left { left: 0; transform-origin: 100% 50%; }
+    .half.right { right: 0; transform-origin: 0% 50%; }
+
+    .cookie:not(.cracked) .half.left { transform: translateX(2px); }
+    .cookie:not(.cracked) .half.right { transform: translateX(-2px); }
+
+    .cookie-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 55% 55% 45% 45% / 60% 60% 40% 40%;
+      background:
+        radial-gradient(circle at 30% 32%, #f0c58c 0 18%, transparent 18%),
+        radial-gradient(circle at 70% 62%, #f0c58c 0 16%, transparent 16%),
+        radial-gradient(circle at 45% 70%, #f0c58c 0 14%, transparent 14%),
+        radial-gradient(circle at 64% 35%, var(--chip) 0 5%, transparent 5%),
+        radial-gradient(circle at 35% 62%, var(--chip) 0 4%, transparent 4%),
+        radial-gradient(circle at 58% 68%, var(--chip) 0 5%, transparent 5%),
+        radial-gradient(circle at 48% 40%, var(--chip) 0 4%, transparent 4%),
+        radial-gradient(circle at 72% 45%, var(--chip) 0 3.5%, transparent 3.5%),
+        radial-gradient(circle at 28% 45%, var(--chip) 0 3.5%, transparent 3.5%),
+        radial-gradient(ellipse at 50% 55%, var(--cookie) 0 55%, var(--cookie-deep) 60% 100%);
+      box-shadow: inset 0 10px 18px rgba(255, 255, 255, 0.35),
+        inset 0 -16px 26px rgba(122, 73, 26, 0.22);
+    }
+
+    .cookie-face::before {
+      content: "";
+      position: absolute;
+      inset: 18% 12% 30% 12%;
+      border-radius: 55% 55% 45% 45% / 65% 65% 35% 35%;
+      background: linear-gradient(180deg, rgba(255, 245, 219, 0.9), rgba(236, 197, 132, 0.1));
+      transform: translateY(6px);
+      box-shadow: inset 0 -10px 12px rgba(162, 106, 59, 0.25);
+    }
+
+    .cookie-face::after {
+      content: "";
+      position: absolute;
+      inset: 42% 16% 18% 16%;
+      border-radius: 60% 60% 40% 40% / 70% 70% 30% 30%;
+      border-top: 6px solid rgba(162, 106, 59, 0.35);
+      filter: blur(0.2px);
+    }
+
+    .half.left .cookie-face { left: 0; }
+    .half.right .cookie-face { right: 0; }
+
+    .crack {
+      position: absolute;
+      inset: 18% 48% 16% 48%;
+      background: linear-gradient(180deg, transparent, #a26a3b 20% 80%, transparent);
+      opacity: 0;
+      transform: scaleY(0);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .cookie.cracked .half.left { transform: translateX(-20px) rotate(-8deg); }
+    .cookie.cracked .half.right { transform: translateX(20px) rotate(8deg); }
+    .cookie.cracked .crack { opacity: 1; transform: scaleY(1); }
+
+    .slip {
+      background: var(--paper);
+      border-radius: 14px;
+      padding: 22px 26px;
+      width: min(560px, 88vw);
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.08);
+      display: grid;
+      gap: 12px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .slip.open { opacity: 1; transform: translateY(0); }
+
+    .fortune {
+      font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+      line-height: 1.5;
+      font-weight: 600;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px 16px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .source {
+      font-size: 0.9rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .source a {
+      color: var(--ink);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(47, 42, 33, 0.25);
+      width: fit-content;
+      pointer-events: auto;
+    }
+
+    .source a:hover { border-bottom-color: rgba(47, 42, 33, 0.6); }
+
+    .label { font-weight: 600; color: var(--ink); }
+
+    .cta {
+      text-align: center;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .debug {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: var(--ink);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+      width: min(260px, 80vw);
+      display: none;
+      z-index: 99;
+      line-height: 1.35;
+    }
+
+    .debug.active { display: block; }
+
+    @media (max-width: 640px) {
+      .meta { flex-direction: column; }
+      .cookie { --cookie-size: clamp(220px, 66vw, 280px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div>
+      <h1>Fortune Cookie Forecast</h1>
+      <p class="hint">Tap the cookie. It knows too much about the news.</p>
+    </div>
+
+    <section id="cookieStage" class="cookie-stage">
+      <div id="cookie" class="cookie" role="button" aria-label="Crack the fortune cookie" tabindex="0">
+        <div class="half left"><div class="cookie-face"></div></div>
+        <div class="half right"><div class="cookie-face"></div></div>
+        <div class="crack"></div>
+      </div>
+
+      <div id="slip" class="slip" aria-live="polite">
+        <div id="fortune" class="fortune">Click the cookie to reveal your fortune.</div>
+        <div class="meta">
+          <div><span class="label">Lucky numbers:</span> <span id="numbers">3 • 8 • 21 • 34 • 55 • 60</span></div>
+          <div><span class="label">Learn Chinese:</span> <span id="word">好运 (hǎoyùn) — good luck</span></div>
+        </div>
+        <div class="source">
+          <span class="label">Based on a real headline:</span>
+          <a id="sourceLink" href="#" target="_blank" rel="noopener">Loading live news…</a>
+          <span id="sourceOutlet"></span>
+        </div>
+      </div>
+
+      <div class="cta">Click again for a new cookie.</div>
+    </section>
+  </main>
+
+  <div id="debug" class="debug">
+    <div><strong>Debug:</strong> click activity</div>
+    <div id="debugClick">Waiting for click…</div>
+    <div id="debugCookie">Cookie box: —</div>
+  </div>
+
+  <script>
+    const fortunes = [
+      "Your meeting will be rescheduled to an earlier timeline you never agreed to.",
+      "A surprise update will fix one bug and introduce two new adventures.",
+      "The algorithm favors you today, but only if you blink twice at the checkout.",
+      "Your long scroll will be broken by a tiny paywall and a very big pop-up.",
+      "A politician will promise transparency, then release a 400-page PDF.",
+      "Your package arrives exactly on time, but in the wrong decade.",
+      "An AI assistant will offer wisdom, then ask you to rate the wisdom.",
+      "Your favorite show will return with fewer episodes and more plot twists.",
+      "A market dip will reveal that you already own exactly one avocado.",
+      "The cloud forecast says partly sunny, fully subscribed.",
+      "A viral trend will pass you by, leaving you with enviable sleep.",
+      "Your electric scooter will be charged by the power of mild impatience.",
+      "A heat wave will remind you that ice is a luxury and shade is a strategy.",
+      "Your group chat will vote, and still nobody will pick a restaurant.",
+      "The streaming service will raise prices, but keep the same three movies.",
+      "A crypto headline will make sense once you stop trying to make it sense.",
+      "Your flight will land early, just in time for a different delay.",
+      "A startup will pivot, and you will accidentally already be in the new market.",
+      "Your inbox will declare victory after hiding the emails you needed.",
+      "An election poll will inspire confidence in the power of snacks.",
+      "You will receive breaking news about a celebrity you only know from memes.",
+      "A new gadget will promise simplicity and require four chargers.",
+      "The robot vacuum will map your home and keep the map for itself.",
+      "A bold initiative will be announced and delivered as a beta.",
+      "Your viral moment will be a well-timed cat gif with perfect captions."
+    ];
+
+    const feedSources = [
+      { name: "BBC News", url: "https://feeds.bbci.co.uk/news/rss.xml?edition=us" },
+      { name: "NPR", url: "https://feeds.npr.org/1001/rss.xml" }
+    ];
+
+    const stopWords = new Set([
+      "the","a","an","and","or","but","to","of","in","on","for","with","as","at","by",
+      "from","about","after","before","over","under","into","out","up","down","new",
+      "says","say","saying","report","reports","reported","amid","more","than","its",
+      "their","his","her","our","your","you","they","we","us","this","that","these",
+      "those","will","may","might","could","should","is","are","was","were","be","been"
+    ]);
+
+    const blacklist = [
+      "murder","killed","killing","death","dead","dies","fatal","shoot","shot","gun","stab",
+      "assault","rape","abuse","violence","war","bomb","terror","hostage","kidnap","crime",
+      "trial","court","prison","jail","lawsuit","epstein","child","children","girl","boy"
+    ];
+
+    const whitelist = [
+      "tech","ai","robot","app","software","startup","company","stock","market","economy",
+      "science","space","nasa","climate","weather","storm","heat","cool","art","music",
+      "film","tv","movie","book","festival","sports","game","match","league","travel",
+      "food","restaurant","coffee","energy","battery","car","train","flight"
+    ];
+
+    const chineseWords = [
+      "好运 (hǎoyùn) — good luck",
+      "平安 (píng'ān) — peace",
+      "机会 (jīhuì) — opportunity",
+      "笑 (xiào) — smile",
+      "希望 (xīwàng) — hope",
+      "智慧 (zhìhuì) — wisdom",
+      "耐心 (nàixīn) — patience",
+      "顺利 (shùnlì) — smooth success",
+      "灵感 (línggǎn) — inspiration",
+      "勇气 (yǒngqì) — courage"
+    ];
+
+    const cookieStage = document.getElementById("cookieStage");
+    const cookie = document.getElementById("cookie");
+    const slip = document.getElementById("slip");
+    const fortuneEl = document.getElementById("fortune");
+    const numbersEl = document.getElementById("numbers");
+    const wordEl = document.getElementById("word");
+    const sourceLink = document.getElementById("sourceLink");
+    const sourceOutlet = document.getElementById("sourceOutlet");
+    const debugPanel = document.getElementById("debug");
+    const debugClick = document.getElementById("debugClick");
+    const debugCookie = document.getElementById("debugCookie");
+
+    let animating = false;
+    let headlinePool = [];
+    let lastHeadline = null;
+    const debugEnabled = new URLSearchParams(window.location.search).has("debug");
+
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    const luckyNumbers = () => {
+      const nums = new Set();
+      while (nums.size < 6) {
+        nums.add(Math.floor(Math.random() * 60) + 1);
+      }
+      return Array.from(nums).sort((a, b) => a - b).join(" • ");
+    };
+
+    const stripProtocol = (url) => (
+      url.startsWith("https://") ? url.slice(8) :
+      url.startsWith("http://") ? url.slice(7) :
+      url
+    );
+
+    const proxyUrls = (url) => ([
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      `https://thingproxy.freeboard.io/fetch/${url}`,
+      `https://r.jina.ai/http://${stripProtocol(url)}`
+    ]);
+
+    const fetchFeed = async (source) => {
+      let lastError = null;
+      for (const proxied of proxyUrls(source.url)) {
+        try {
+          const response = await fetch(proxied);
+          if (!response.ok) throw new Error("Feed request failed");
+          const xmlText = await response.text();
+          const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+          const items = Array.from(doc.querySelectorAll("item"));
+          return items.map((item) => ({
+            title: item.querySelector("title")?.textContent?.trim() ?? "",
+            link: item.querySelector("link")?.textContent?.trim() ?? "",
+            source: source.name
+          })).filter((item) => item.title && item.link);
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError ?? new Error("Feed request failed");
+    };
+
+    const isSafeHeadline = (title) => {
+      const lower = title.toLowerCase();
+      const hasBlacklisted = blacklist.some((word) => lower.includes(word));
+      if (hasBlacklisted) return false;
+      const hasWhitelisted = whitelist.some((word) => lower.includes(word));
+      return hasWhitelisted;
+    };
+
+    const loadHeadlines = async () => {
+      try {
+        const results = await Promise.allSettled(feedSources.map(fetchFeed));
+        const merged = results
+          .filter((result) => result.status === "fulfilled")
+          .flatMap((result) => result.value)
+          .filter((item) => isSafeHeadline(item.title));
+        const unique = [];
+        const seen = new Set();
+        for (const item of merged) {
+          const key = `${item.title}::${item.link}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(item);
+          }
+        }
+        headlinePool = unique;
+        if (headlinePool.length === 0) {
+          sourceLink.textContent = "Latest headlines";
+          sourceLink.href = "https://www.bbc.com/news";
+          sourceOutlet.textContent = "Source: BBC News (homepage)";
+        }
+      } catch (error) {
+        sourceLink.textContent = "Latest headlines";
+        sourceLink.href = "https://www.bbc.com/news";
+        sourceOutlet.textContent = "Source: BBC News (homepage)";
+      }
+    };
+
+    const headlineKeywords = (title) => title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .split(/\\s+/)
+      .map((word) => word.toLowerCase())
+      .filter((word) => word && !stopWords.has(word))
+      .slice(0, 4);
+
+    const shorten = (title) => {
+      if (title.length <= 68) return title;
+      return `${title.slice(0, 65).trim()}…`;
+    };
+
+    const fortuneTemplates = [
+      "While {key} trends, your smartest move is a snack and a slow blink.",
+      "The headline says “{short}.” Your fortune says: choose the calmer tab.",
+      "If {key} is everywhere, your next step is a tiny victory (and a nap).",
+      "Breaking news: {key}. Breaking habit: refreshing the feed.",
+      "The world shouts {key}; your fortune whispers “soft launch today.”",
+      "{key} gets the spotlight, but your quiet plan gets the results."
+    ];
+
+    const makeFortuneFromHeadline = (item) => {
+      const keys = headlineKeywords(item.title);
+      const key = keys[0] ? keys[0] : "the news";
+      const template = pick(fortuneTemplates);
+      return template
+        .replace("{key}", key)
+        .replace("{short}", shorten(item.title));
+    };
+
+    const getHeadline = () => {
+      if (headlinePool.length === 0) return null;
+      let candidate = pick(headlinePool);
+      if (headlinePool.length > 1 && lastHeadline) {
+        while (candidate.link === lastHeadline.link) {
+          candidate = pick(headlinePool);
+        }
+      }
+      lastHeadline = candidate;
+      return candidate;
+    };
+
+    const resetCookie = () => new Promise((resolve) => {
+      slip.classList.remove("open");
+      cookie.classList.remove("cracked");
+      window.setTimeout(resolve, 180);
+    });
+
+    const crackCookie = async () => {
+      if (animating) return;
+      animating = true;
+
+      await resetCookie();
+      void cookie.offsetWidth;
+      cookie.classList.add("cracked");
+
+      setTimeout(() => {
+        const headline = getHeadline();
+        if (headline) {
+          fortuneEl.textContent = makeFortuneFromHeadline(headline);
+          sourceLink.textContent = shorten(headline.title);
+          sourceLink.href = headline.link;
+          sourceOutlet.textContent = `Source: ${headline.source}`;
+        } else {
+          fortuneEl.textContent = pick(fortunes);
+          sourceLink.textContent = "Latest headlines";
+          sourceLink.href = "https://www.bbc.com/news";
+          sourceOutlet.textContent = "Source: BBC News (homepage)";
+        }
+        numbersEl.textContent = luckyNumbers();
+        wordEl.textContent = pick(chineseWords);
+        slip.classList.add("open");
+      }, 420);
+
+      setTimeout(() => {
+        animating = false;
+      }, 900);
+    };
+
+    cookieStage.addEventListener("click", (event) => {
+      if (event.target.closest("a")) return;
+      crackCookie();
+    });
+    cookie.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        crackCookie();
+      }
+    });
+
+    if (debugEnabled) {
+      debugPanel.classList.add("active");
+      const updateCookieBox = () => {
+        const rect = cookie.getBoundingClientRect();
+        debugCookie.textContent = `Cookie box: ${Math.round(rect.width)}x${Math.round(rect.height)} at ${Math.round(rect.left)},${Math.round(rect.top)}`;
+      };
+      updateCookieBox();
+      window.addEventListener("resize", updateCookieBox);
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        const label = target?.id ? `#${target.id}` : (target?.className || target?.tagName);
+        debugClick.textContent = `Clicked: ${label}`;
+        updateCookieBox();
+      }, { capture: true });
+      cookieStage.addEventListener("click", () => {
+        debugClick.textContent = "Cookie handler fired ✅";
+      });
+    }
+
+    loadHeadlines();
+  </script>
+</body>
+</html>
